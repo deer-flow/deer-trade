@@ -1,0 +1,23 @@
+BASIC_MODEL:
+  base_url: https://ark.cn-beijing.volces.com/api/v3
+  model: "doubao-1-5-pro-32k-250115"
+  api_key: xxxx
+  # max_retries: 3 # Maximum number of retries for LLM calls
+  # verify_ssl: false  # Uncomment this line to disable SSL certificate verification for self-signed certificates
+
+
+SELECTED_ANALYSTS:
+  - "news"
+  - "technical"
+  - "fundamental"
+  - "growth"
+  - "value"
+ 
+# Reasoning model is optional.
+# Uncomment the following settings if you want to use reasoning model
+
+# REASONING_MODEL:
+#   base_url: https://ark.cn-beijing.volces.com/api/v3
+#   model: "doubao-1-5-thinking-pro-m-250428"
+#   api_key: xxxx
+#   max_retries: 3 # Maximum number of retries for LLM calls
