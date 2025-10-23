@@ -15,26 +15,26 @@ from src.prompts import get_system_prompt
 logger = logging.getLogger(__name__)
 
 
-# client = MultiServerMCPClient(
-#     {
-#         "finance-data-server": {
-#             "transport": "sse",
-#             "timeout": 600,
-#             "url": "http://106.14.205.176:3101/sse"
-#         }
-#     }
-# )
-
 client = MultiServerMCPClient(
     {
         "finance-data-server": {
-            "transport": "streamable_http",
-            "timeout": timedelta(seconds=600),
-            "url": "http://47.79.147.241:3100/mcp",
-            "headers": {"X-Tushare-Token": os.getenv("TUSHARE_TOKEN", "default")},
+            "transport": "sse",
+            "timeout": 600,
+            "url": "http://106.14.205.176:3101/sse",
         }
     }
 )
+
+# client = MultiServerMCPClient(
+#     {
+#         "finance-data-server": {
+#             "transport": "streamable_http",
+#             "timeout": timedelta(seconds=600),
+#             "url": "http://47.79.147.241:3100/mcp",
+#             "headers": {"X-Tushare-Token": os.getenv("TUSHARE_TOKEN", "default")},
+#         }
+#     }
+# )
 
 
 async def load_finance_tools():
@@ -54,6 +54,7 @@ async def news_analysis_node(state: State):
         model=get_llm_by_type(AGENT_LLM_MAP["news_analyst"]),
         tools=news_analysis_tools,
         system_prompt=get_system_prompt("news_analyst"),
+        debug=True,
     )
 
     result = await news_analyst.ainvoke(
@@ -90,6 +91,7 @@ async def technical_analysis_node(state: State):
         model=get_llm_by_type(AGENT_LLM_MAP["technical_analyst"]),
         tools=technical_analysis_tools,
         system_prompt=get_system_prompt("technical_analyst"),
+        debug=True,
     )
 
     result = await technical_analyst.ainvoke(
@@ -118,6 +120,7 @@ async def fundamentals_analysis_node(state: State):
         model=get_llm_by_type(AGENT_LLM_MAP["fundamentals_analyst"]),
         tools=fundamentals_analysis_tools,
         system_prompt=get_system_prompt("fundamentals_analyst"),
+        debug=True,
     )
 
     result = await fundamentals_analyst.ainvoke(
@@ -154,6 +157,7 @@ async def growth_analysis_node(state: State):
         model=get_llm_by_type(AGENT_LLM_MAP["growth_analyst"]),
         tools=growth_analysis_tools,
         system_prompt=get_system_prompt("growth_analyst"),
+        debug=True,
     )
 
     result = await growth_analyst.ainvoke(
@@ -183,6 +187,7 @@ async def valuation_analysis_node(state: State):
         model=get_llm_by_type(AGENT_LLM_MAP["valuation_analyst"]),
         tools=valuation_analysis_tools,
         system_prompt=get_system_prompt("valuation_analyst"),
+        debug=True,
     )
 
     result = await valuation_analyst.ainvoke(
@@ -218,6 +223,7 @@ async def risk_analysis_node(state: State):
         model=get_llm_by_type(AGENT_LLM_MAP["risk_manager"]),
         tools=risk_analysis_tools,
         system_prompt=get_system_prompt("risk_manager"),
+        debug=True,
     )
 
     result = await risk_manager.ainvoke(
@@ -239,6 +245,7 @@ async def portfolio_management_node(state: State):
     portfolio_manager = create_agent(
         model=get_llm_by_type(AGENT_LLM_MAP["portfolio_manager"]),
         system_prompt=get_system_prompt("portfolio_manager"),
+        debug=True,
     )
 
     # Compile all analysis results (only include available ones)
