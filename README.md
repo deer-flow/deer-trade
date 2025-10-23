@@ -15,6 +15,8 @@ Deer Trade 是一个基于 LangChain 和 LangGraph 构建的智能股票分析�
 
 ## 🏗️ 系统架构
 
+![系统架构图](./assets/architecture.png)
+
 ```
 deer-trade/
 ├── src/
@@ -42,12 +44,16 @@ pip install -e .
 
 ```python
 import asyncio
+import json
+
 from src.workflow import graph
 
+
 async def main():
-    # 分析苹果公司股票
-    result = await graph.ainvoke(input={"stock_code": "AAPL"})
-    print(result)
+    res = await graph.ainvoke(input={"stock_code": "300308.SH", "start_date": "20251020", "end_date": "20251023"})
+    print(json.dumps(res, indent=4, ensure_ascii=False))
+    return res
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -61,6 +67,10 @@ if __name__ == "__main__":
 export DEEPSEEK_API_KEY="your_deepseek_api_key"
 export OPENAI_API_KEY="your_openai_api_key"
 ```
+
+## 📋 示例分析
+
+以下是一个完整的股票分析示例（中际旭创 300308.SH），请参考文件：[示例文件](./examples/中际旭创.md)。
 
 ## 🔧 配置选项
 

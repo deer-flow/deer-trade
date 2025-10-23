@@ -10,6 +10,8 @@ class State(MessagesState):
 
     # Runtime Variables
     stock_code: str
+    start_date: str
+    end_date: str
 
     news_analysis_result: str
     technical_analysis_result: str

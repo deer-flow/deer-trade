@@ -25,16 +25,17 @@ client = MultiServerMCPClient(
     }
 )
 
-# client = MultiServerMCPClient(
-#     {
-#         "finance-data-server": {
-#             "transport": "streamable_http",
-#             "timeout": timedelta(seconds=600),
-#             "url": "http://47.79.147.241:3100/mcp",
-#             "headers": {"X-Tushare-Token": os.getenv("TUSHARE_TOKEN", "default")},
-#         }
-#     }
-# )
+if os.getenv("TUSHARE_TOKEN"):
+    client = MultiServerMCPClient(
+        {
+            "finance-data-server": {
+                "transport": "streamable_http",
+                "timeout": timedelta(seconds=600),
+                "url": "http://47.79.147.241:3100/mcp",
+                "headers": {"X-Tushare-Token": os.environ["TUSHARE_TOKEN"]},
+            }
+        }
+    )
 
 
 async def load_finance_tools():
@@ -48,7 +49,7 @@ async def news_analysis_node(state: State):
     logger.info(f"running news_analysis")
     finance_tools = await load_finance_tools()
     news_analysis_tools = [
-        tool for tool in finance_tools if tool.name in ["finance_news", "hot_news_7x24"]
+        tool for tool in finance_tools if tool.name in ["finance_news"]
     ]
     news_analyst = create_agent(
         model=get_llm_by_type(AGENT_LLM_MAP["news_analyst"]),
@@ -61,7 +62,7 @@ async def news_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive news sentiment analysis for {state['stock_code']}"
+                    content=f"please do a comprehensive news sentiment analysis for {state['stock_code']} from {state['start_date']} to {state['end_date']}."
                 )
             ]
         }
@@ -84,7 +85,6 @@ async def technical_analysis_node(state: State):
             "index_data",
             "money_flow",
             "csi_index_constituents",
-            "dragon_tiger_inst",
         ]
     ]
     technical_analyst = create_agent(
@@ -98,7 +98,7 @@ async def technical_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive technical analysis for stock {state['stock_code']}, including price trends, technical indicators, and money flow patterns"
+                    content=f"please do a comprehensive technical analysis for stock {state['stock_code']}, including price trends, technical indicators, and money flow patterns from {state['start_date']} to {state['end_date']}."
                 )
             ]
         }
@@ -127,7 +127,7 @@ async def fundamentals_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive fundamental analysis for stock {state['stock_code']}, including financial statements, key metrics, and macroeconomic context"
+                    content=f"please do a comprehensive fundamental analysis for stock {state['stock_code']}, including financial statements, key metrics, and macroeconomic context from {state['start_date']} to {state['end_date']}."
                 )
             ]
         }
@@ -164,7 +164,7 @@ async def growth_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive growth analysis for stock {state['stock_code']}, including revenue/profit trends, market expansion, and institutional interest"
+                    content=f"please do a comprehensive growth analysis for stock {state['stock_code']}, including revenue/profit trends, market expansion, and institutional interest from {state['start_date']} to {state['end_date']}."
                 )
             ]
         }
@@ -194,7 +194,7 @@ async def valuation_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive valuation analysis for stock {state['stock_code']}, including P/E, P/B, P/S ratios, peer comparison, and fair value assessment"
+                    content=f"please do a comprehensive valuation analysis for stock {state['stock_code']}, including P/E, P/B, P/S ratios, peer comparison, and fair value assessment from {state['start_date']} to {state['end_date']}."
                 )
             ]
         }
@@ -212,11 +212,9 @@ async def risk_analysis_node(state: State):
         for tool in finance_tools
         if tool.name
         in [
-            "margin_trade",
             "block_trade",
             "company_performance",
             "convertible_bond",
-            "dragon_tiger_inst",
         ]
     ]
     risk_manager = create_agent(
@@ -230,7 +228,7 @@ async def risk_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive risk analysis for stock {state['stock_code']}, including margin trading, block trades, debt levels, and other risk factors"
+                    content=f"please do a comprehensive risk analysis for stock {state['stock_code']}, including margin trading, block trades, debt levels, and other risk factors from {state['start_date']} to {state['end_date']}."
                 )
             ]
         }
@@ -249,7 +247,9 @@ async def portfolio_management_node(state: State):
     )
 
     # Compile all analysis results (only include available ones)
-    analysis_parts = [f"Stock: {state['stock_code']}\n"]
+    analysis_parts = [
+        f"Stock: {state['stock_code']}\nFrom {state['start_date']} to {state['end_date']}\n"
+    ]
 
     if state.get("news_analysis_result"):
         analysis_parts.append(f"News Analysis:\n{state['news_analysis_result']}\n")
