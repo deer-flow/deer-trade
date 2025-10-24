@@ -6,6 +6,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
+from langgraph.prebuilt import ToolNode
 
 from src.graph.types import State
 from src.llms.llm import get_llm_by_type
@@ -26,13 +27,24 @@ client = MultiServerMCPClient(
 )
 
 if os.getenv("TUSHARE_TOKEN"):
+    # client = MultiServerMCPClient(
+    #     {
+    #         "finance-data-server": {
+    #             "transport": "streamable_http",
+    #             "timeout": timedelta(seconds=600),
+    #             "url": "http://47.79.147.241:3100/mcp",
+    #             "headers": {"X-Tushare-Token": os.environ["TUSHARE_TOKEN"]},
+    #         }
+    #     }
+    # )
+
     client = MultiServerMCPClient(
         {
             "finance-data-server": {
-                "transport": "streamable_http",
-                "timeout": timedelta(seconds=600),
-                "url": "http://47.79.147.241:3100/mcp",
-                "headers": {"X-Tushare-Token": os.environ["TUSHARE_TOKEN"]},
+                "transport": "stdio",
+                "command": "npx",
+                "args": ["-y", "finance-mcp"],
+                "env": {"TUSHARE_TOKEN": os.environ["TUSHARE_TOKEN"]},
             }
         }
     )
@@ -42,6 +54,40 @@ async def load_finance_tools():
 
     tools = await client.get_tools()
     return tools
+
+
+async def stock_data_node(state: State):
+    """Stock data using stock data, index data, and money flow."""
+    logger.info(f"running stock_data")
+    finance_tools = await load_finance_tools()
+    stock_data_tools = [
+        tool
+        for tool in finance_tools
+        if tool.name
+        in [
+            "stock_data",
+        ]
+    ]
+    if not stock_data_tools:
+        raise ValueError("No stock data tools found")
+
+    agent = create_agent(
+        model=get_llm_by_type(AGENT_LLM_MAP["stock_data"]),
+        tools=stock_data_tools,
+        system_prompt=get_system_prompt("stock_data"),
+        debug=True,
+    )
+    result = await agent.ainvoke(
+        input={
+            "messages": [
+                HumanMessage(
+                    content=f"please use the stock data tool to get the stock data for {state['stock_code']} from {state['start_date']} to {state['end_date']}."
+                )
+            ]
+        }
+    )
+    stock_data_result = result["messages"][-1].content
+    return Command(update={"stock_data": stock_data_result})
 
 
 async def news_analysis_node(state: State):
@@ -68,7 +114,7 @@ async def news_analysis_node(state: State):
         }
     )
     news_analysis_result = result["messages"][-1].content
-    return Command(update={"news_analysis_result": news_analysis_result})
+    return Command(update={"news_analysis": news_analysis_result})
 
 
 async def technical_analysis_node(state: State):
@@ -80,7 +126,6 @@ async def technical_analysis_node(state: State):
         for tool in finance_tools
         if tool.name
         in [
-            "stock_data",
             "stock_data_minutes",
             "index_data",
             "money_flow",
@@ -98,13 +143,13 @@ async def technical_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive technical analysis for stock {state['stock_code']}, including price trends, technical indicators, and money flow patterns from {state['start_date']} to {state['end_date']}."
+                    content=f"please do a comprehensive technical analysis for stock {state['stock_code']}, including price trends, technical indicators, and money flow patterns from {state['start_date']} to {state['end_date']}.\"\n\n# Stock Data\n{state['stock_data']}"
                 )
             ]
         }
     )
     technical_analysis_result = result["messages"][-1].content
-    return Command(update={"technical_analysis_result": technical_analysis_result})
+    return Command(update={"technical_analysis": technical_analysis_result})
 
 
 async def fundamentals_analysis_node(state: State):
@@ -133,9 +178,7 @@ async def fundamentals_analysis_node(state: State):
         }
     )
     fundamentals_analysis_result = result["messages"][-1].content
-    return Command(
-        update={"fundamentals_analysis_result": fundamentals_analysis_result}
-    )
+    return Command(update={"fundamentals_analysis": fundamentals_analysis_result})
 
 
 async def growth_analysis_node(state: State):
@@ -170,7 +213,7 @@ async def growth_analysis_node(state: State):
         }
     )
     growth_analysis_result = result["messages"][-1].content
-    return Command(update={"growth_analysis_result": growth_analysis_result})
+    return Command(update={"growth_analysis": growth_analysis_result})
 
 
 async def valuation_analysis_node(state: State):
@@ -180,8 +223,7 @@ async def valuation_analysis_node(state: State):
     valuation_analysis_tools = [
         tool
         for tool in finance_tools
-        if tool.name
-        in ["company_performance", "stock_data", "index_data", "csi_index_constituents"]
+        if tool.name in ["company_performance", "index_data", "csi_index_constituents"]
     ]
     valuation_analyst = create_agent(
         model=get_llm_by_type(AGENT_LLM_MAP["valuation_analyst"]),
@@ -194,13 +236,13 @@ async def valuation_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive valuation analysis for stock {state['stock_code']}, including P/E, P/B, P/S ratios, peer comparison, and fair value assessment from {state['start_date']} to {state['end_date']}."
+                    content=f"please do a comprehensive valuation analysis for stock {state['stock_code']}, including P/E, P/B, P/S ratios, peer comparison, and fair value assessment from {state['start_date']} to {state['end_date']}.\"\n\n# Stock Data\n{state['stock_data']}"
                 )
             ]
         }
     )
     valuation_analysis_result = result["messages"][-1].content
-    return Command(update={"valuation_analysis_result": valuation_analysis_result})
+    return Command(update={"valuation_analysis": valuation_analysis_result})
 
 
 async def risk_analysis_node(state: State):
@@ -212,8 +254,8 @@ async def risk_analysis_node(state: State):
         for tool in finance_tools
         if tool.name
         in [
+            "margin_trade",
             "block_trade",
-            "company_performance",
             "convertible_bond",
         ]
     ]
@@ -228,13 +270,13 @@ async def risk_analysis_node(state: State):
         input={
             "messages": [
                 HumanMessage(
-                    content=f"please do a comprehensive risk analysis for stock {state['stock_code']}, including margin trading, block trades, debt levels, and other risk factors from {state['start_date']} to {state['end_date']}."
+                    content=f"please do a comprehensive risk analysis for stock {state['stock_code']}, including margin trading, block trades, debt levels, and other risk factors from {state['start_date']} to {state['end_date']}.\n\n# Stock Data\n{state['stock_data']}"
                 )
             ]
         }
     )
     risk_analysis_result = result["messages"][-1].content
-    return Command(update={"risk_analysis_result": risk_analysis_result})
+    return Command(update={"risk_analysis": risk_analysis_result})
 
 
 async def portfolio_management_node(state: State):
@@ -249,31 +291,28 @@ async def portfolio_management_node(state: State):
     # Compile all analysis results (only include available ones)
     analysis_parts = [
         f"Stock: {state['stock_code']}\nFrom {state['start_date']} to {state['end_date']}\n"
+        f"# Stock Data\n{state['stock_data']}"
     ]
 
-    if state.get("news_analysis_result"):
-        analysis_parts.append(f"News Analysis:\n{state['news_analysis_result']}\n")
+    if state.get("news_analysis"):
+        analysis_parts.append(f"News Analysis:\n{state['news_analysis']}\n")
 
-    if state.get("technical_analysis_result"):
+    if state.get("technical_analysis"):
+        analysis_parts.append(f"Technical Analysis:\n{state['technical_analysis']}\n")
+
+    if state.get("fundamentals_analysis"):
         analysis_parts.append(
-            f"Technical Analysis:\n{state['technical_analysis_result']}\n"
+            f"Fundamental Analysis:\n{state['fundamentals_analysis']}\n"
         )
 
-    if state.get("fundamentals_analysis_result"):
-        analysis_parts.append(
-            f"Fundamental Analysis:\n{state['fundamentals_analysis_result']}\n"
-        )
+    if state.get("growth_analysis"):
+        analysis_parts.append(f"Growth Analysis:\n{state['growth_analysis']}\n")
 
-    if state.get("growth_analysis_result"):
-        analysis_parts.append(f"Growth Analysis:\n{state['growth_analysis_result']}\n")
+    if state.get("valuation_analysis"):
+        analysis_parts.append(f"Valuation Analysis:\n{state['valuation_analysis']}\n")
 
-    if state.get("valuation_analysis_result"):
-        analysis_parts.append(
-            f"Valuation Analysis:\n{state['valuation_analysis_result']}\n"
-        )
-
-    if state.get("risk_analysis_result"):
-        analysis_parts.append(f"Risk Analysis:\n{state['risk_analysis_result']}\n")
+    if state.get("risk_analysis"):
+        analysis_parts.append(f"Risk Analysis:\n{state['risk_analysis']}\n")
 
     analysis_summary = "\n".join(analysis_parts)
 
@@ -286,5 +325,5 @@ async def portfolio_management_node(state: State):
             ]
         }
     )
-    portfolio_recommendation = result["messages"][-1].content
-    return Command(update={"portfolio_recommendation": portfolio_recommendation})
+    portfolio_management_result = result["messages"][-1].content
+    return Command(update={"portfolio_management": portfolio_management_result})

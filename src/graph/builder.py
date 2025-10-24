@@ -9,6 +9,7 @@ from src.graph.nodes import (
     valuation_analysis_node,
     risk_analysis_node,
     portfolio_management_node,
+    stock_data_node,
 )
 
 
@@ -51,14 +52,20 @@ def build_graph(selected_analysts=None):
     # Always add risk_manager and portfolio_manager
     builder.add_node("risk_manager", risk_analysis_node)
     builder.add_node("portfolio_manager", portfolio_management_node)
+    builder.add_node("stock_data", stock_data_node)
+
+    builder.add_edge(START, "stock_data")
 
     # Connect selected analysts in parallel from START
     for analyst_node in active_analysts:
-        builder.add_edge(START, analyst_node)
+        builder.add_edge("stock_data", analyst_node)
 
     # All selected analysts connect to risk_manager (will wait for all to complete)
     for analyst_node in active_analysts:
         builder.add_edge(analyst_node, "risk_manager")
+
+    if not active_analysts:
+        builder.add_edge("stock_data", "risk_manager")
 
     # Sequential execution: risk_manager -> portfolio_manager -> END
     builder.add_edge("risk_manager", "portfolio_manager")

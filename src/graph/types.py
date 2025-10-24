@@ -9,14 +9,15 @@ class State(MessagesState):
     """State for the agent system, extends MessagesState with next field."""
 
     # Runtime Variables
-    stock_code: str
-    start_date: str
-    end_date: str
+    stock_code: str = ""
+    start_date: str = ""
+    end_date: str = ""
 
-    news_analysis_result: str
-    technical_analysis_result: str
-    fundamentals_analysis_result: str
-    growth_analysis_result: str
-    valuation_analysis_result: str
-    risk_analysis_result: str
-    portfolio_recommendation: str
+    stock_data: str = ""
+    news_analysis: str = ""
+    technical_analysis: str = ""
+    fundamentals_analysis: str = ""
+    growth_analysis: str = ""
+    valuation_analysis: str = ""
+    risk_analysis: str = ""
+    portfolio_management: str = ""
